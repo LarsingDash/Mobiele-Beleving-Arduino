@@ -12,6 +12,16 @@ long currentTime;
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
+void updateLCD(){
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Score:");
+  lcd.setCursor(7, 0);
+  lcd.print(score);
+  lcd.setCursor(9, 0);
+  lcd.print("/15");
+}
+
 void setup() {
   pinMode(red, OUTPUT);
   pinMode(green, OUTPUT);
@@ -30,11 +40,18 @@ void loop() {
   digitalWrite(green, LOW);
   digitalWrite(blue, LOW);
 
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("Score:");
-  lcd.setCursor(7, 0);
-  lcd.print(score);
+  updateLCD();
+
+  if (score == 15){
+    lcd.setCursor(0, 1);
+    lcd.print("Code: 12345");
+
+    while(digitalRead(rButton) == LOW || digitalRead(gButton) == LOW || digitalRead(bButton) == LOW){
+    }
+
+    score = 0;
+    updateLCD();
+  }
 
   delay(500);
 
