@@ -1,26 +1,19 @@
+#include <Wire.h>
+
 #include <LiquidCrystal_I2C.h>
 
-const int red = 5;
-const int green = 19;
-const int blue = 23;
-const int rButton = 2;
-const int gButton = 4;
-const int bButton = 18;
+const int red = 13;
+const int green = 12;
+const int blue = 14;
+const int rButton = 32;
+const int gButton = 35;
+const int bButton = 34;
 int score = 0;
+int timer = 0;
 int rNumber;
 long currentTime;
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
-
-void updateLCD(){
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("Score:");
-  lcd.setCursor(7, 0);
-  lcd.print(score);
-  lcd.setCursor(9, 0);
-  lcd.print("/15");
-}
 
 void setup() {
   pinMode(red, OUTPUT);
@@ -31,30 +24,46 @@ void setup() {
   pinMode(gButton, INPUT_PULLUP);
   pinMode(bButton, INPUT_PULLUP);
 
+  Wire.begin(25,26);
+
   lcd.init();
   lcd.backlight();
 }
 
 void loop() {
-  digitalWrite(red, LOW);
-  digitalWrite(green, LOW);
-  digitalWrite(blue, LOW);
+  //Initialize display
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Scan phone");
+  lcd.setCursor(0, 1);
+  lcd.print("to start game");
 
-  updateLCD();
+  //Buffer
+  delay(2000);
 
-  if (score == 15){
-    lcd.setCursor(0, 1);
-    lcd.print("Code: 12345");
-
-    while(digitalRead(rButton) == LOW || digitalRead(gButton) == LOW || digitalRead(bButton) == LOW){
-    }
-
-    score = 0;
-    updateLCD();
+  //Wait for activation
+  while(digitalRead(rButton) == LOW || digitalRead(gButton) == LOW || digitalRead(bButton) == LOW){
   }
 
-  delay(500);
+  //Play game for 30 seconds
+  timer = millis();
+  while(millis() < timer + 30000){
+    play();
+  }
 
+  //Write congratulations
+  lcd.setCursor(0, 1);
+  lcd.print("Congratulations!");
+
+  //Wait for clickthrough
+  while(digitalRead(rButton) == LOW || digitalRead(gButton) == LOW || digitalRead(bButton) == LOW){
+  }
+
+  //Reset score
+  score = 0;
+}
+
+void play(){
   //Pick random color, display this
   rNumber = random(3);
   switch (rNumber){
@@ -88,4 +97,21 @@ void loop() {
       break;
     }
   }
+
+  //Reset led
+  digitalWrite(red, LOW);
+  digitalWrite(green, LOW);
+  digitalWrite(blue, LOW);
+
+  updateLCD();
+
+  delay(250);
+}
+
+void updateLCD(){
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Score:");
+  lcd.setCursor(7, 0);
+  lcd.print(score);
 }
