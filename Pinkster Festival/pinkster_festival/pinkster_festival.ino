@@ -9,9 +9,9 @@ const int rButton = 32;
 const int gButton = 35;
 const int bButton = 34;
 int score = 0;
-int timer = 0;
+long timer;
+long timer2;
 int rNumber;
-long currentTime;
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
@@ -45,10 +45,11 @@ void loop() {
   while(digitalRead(rButton) == LOW || digitalRead(gButton) == LOW || digitalRead(bButton) == LOW){
   }
 
-  //Play game for 30 seconds
+  //Play game for 15 seconds
   timer = millis();
-  while(millis() < timer + 30000){
+  while(millis() < timer + 15000){
     play();
+    delay(250);
   }
 
   //Write congratulations
@@ -79,21 +80,27 @@ void play(){
   }
 
   //Active pause
-  currentTime = millis();
-  while(millis() < currentTime + 5000){
+  timer2 = millis();
+  while(millis() < timer2 + 5000){
     //If light is red and red button is pressed
-    if (rNumber == 0 && digitalRead(rButton) == HIGH){
-      score++;
+    if (digitalRead(rButton) == HIGH){
+      if (rNumber == 0){
+        score++;
+      }
       break;
     }
     //If light is green and green button is pressed
-    if (rNumber == 1 && digitalRead(gButton) == HIGH){
-      score++;
+    if (digitalRead(gButton) == HIGH){
+      if (rNumber == 1){
+        score++;
+      }
       break;
     }
     //If light is blue and blue button is pressed
-    if (rNumber == 2 && digitalRead(bButton) == HIGH){
-      score++;
+    if (digitalRead(bButton) == HIGH){
+      if (rNumber == 2){
+        score++;
+      }
       break;
     }
   }
@@ -104,8 +111,6 @@ void play(){
   digitalWrite(blue, LOW);
 
   updateLCD();
-
-  delay(250);
 }
 
 void updateLCD(){
