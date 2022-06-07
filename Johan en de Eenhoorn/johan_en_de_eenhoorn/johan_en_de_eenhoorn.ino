@@ -19,8 +19,8 @@ int defPos = random(0, 5);
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 void setup() {
-  pinMode(atkButton, OUTPUT);
-  pinMode(defButton, OUTPUT);
+  pinMode(atkButton, INPUT_PULLUP);
+  pinMode(defButton, INPUT_PULLUP);
 
 //  lcd.createChar(0, attack);
 //  lcd.createChar(1, defend);
@@ -66,6 +66,22 @@ void loop() {
       Serial.println("defButton is pressed");
     }
   }
+
+  lcd.setCursor(0, 1);
+  lcd.print("Add points?");
+
+  //Wait for clickthrough
+  while(digitalRead(atkButton) == LOW || digitalRead(defButton) == LOW){
+  }
+
+  addPoints();
+
+  //Wait for clickthrough
+  while(digitalRead(atkButton) == LOW || digitalRead(defButton) == LOW){
+  }
+
+  //Reset score
+  score = 0;
 }
 
 void play(){
@@ -142,4 +158,24 @@ void updateLCD(){
   lcd.print("D");
   lcd.setCursor(atkPos, 1);
   lcd.print("A");
+}
+
+void addPoints(){
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Score:");
+  lcd.setCursor(7, 0);
+  lcd.print(score);
+  lcd.setCursor(0, 1);
+  lcd.print("Total:");
+  lcd.setCursor(7, 1);
+  lcd.print("50");
+
+  for(int i = 1; i < score + 1; i++){
+    lcd.setCursor(7, 0);
+    lcd.print(score - i);
+    lcd.setCursor(7, 1);
+    lcd.print(50 + i);
+    delay(100);
+  }
 }
