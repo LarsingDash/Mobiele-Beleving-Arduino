@@ -1,26 +1,19 @@
+#include <Wire.h>
+
 #include <LiquidCrystal_I2C.h>
 
-const int red = 5;
-const int green = 19;
-const int blue = 23;
-const int rButton = 2;
-const int gButton = 4;
-const int bButton = 18;
+const int red = 13;
+const int green = 12;
+const int blue = 14;
+const int rButton = 32;
+const int gButton = 35;
+const int bButton = 34;
 int score = 0;
+long timer;
+long timer2;
 int rNumber;
-long currentTime;
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
-
-void updateLCD(){
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("Score:");
-  lcd.setCursor(7, 0);
-  lcd.print(score);
-  lcd.setCursor(9, 0);
-  lcd.print("/15");
-}
 
 void setup() {
   pinMode(red, OUTPUT);
@@ -31,30 +24,53 @@ void setup() {
   pinMode(gButton, INPUT_PULLUP);
   pinMode(bButton, INPUT_PULLUP);
 
+  Wire.begin(25,26);
+
   lcd.init();
   lcd.backlight();
 }
 
 void loop() {
-  digitalWrite(red, LOW);
-  digitalWrite(green, LOW);
-  digitalWrite(blue, LOW);
+  //Initialize display
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Scan phone");
+  lcd.setCursor(0, 1);
+  lcd.print("to start game");
 
-  updateLCD();
+  //Buffer
+  delay(2000);
 
-  if (score == 15){
-    lcd.setCursor(0, 1);
-    lcd.print("Code: 12345");
-
-    while(digitalRead(rButton) == LOW || digitalRead(gButton) == LOW || digitalRead(bButton) == LOW){
-    }
-
-    score = 0;
-    updateLCD();
+  //Wait for activation
+  while(digitalRead(rButton) == LOW || digitalRead(gButton) == LOW || digitalRead(bButton) == LOW){
   }
 
-  delay(500);
+  //Play game for 15 seconds
+  timer = millis();
+  while(millis() < timer + 15000){
+    play();
+    delay(250);
+  }
 
+  //Write congratulations
+  lcd.setCursor(0, 1);
+  lcd.print("Add points?");
+
+  //Wait for clickthrough
+  while(digitalRead(rButton) == LOW || digitalRead(gButton) == LOW || digitalRead(bButton) == LOW){
+  }
+
+  addPoints();
+
+  //Wait for clickthrough
+  while(digitalRead(rButton) == LOW || digitalRead(gButton) == LOW || digitalRead(bButton) == LOW){
+  }
+
+  //Reset score
+  score = 0;
+}
+
+void play(){
   //Pick random color, display this
   rNumber = random(3);
   switch (rNumber){
@@ -70,22 +86,59 @@ void loop() {
   }
 
   //Active pause
-  currentTime = millis();
-  while(millis() < currentTime + 5000){
+  timer2 = millis();
+  while(millis() < timer2 + 5000){
     //If light is red and red button is pressed
-    if (rNumber == 0 && digitalRead(rButton) == HIGH){
-      score++;
+    if (digitalRead(rButton) == HIGH){
+      if (rNumber == 0){
+        score++;
+      }
       break;
     }
     //If light is green and green button is pressed
-    if (rNumber == 1 && digitalRead(gButton) == HIGH){
-      score++;
+    if (digitalRead(gButton) == HIGH){
+      if (rNumber == 1){
+        score++;
+      }
       break;
     }
     //If light is blue and blue button is pressed
-    if (rNumber == 2 && digitalRead(bButton) == HIGH){
-      score++;
+    if (digitalRead(bButton) == HIGH){
+      if (rNumber == 2){
+        score++;
+      }
       break;
     }
+  }
+
+  //Reset led
+  digitalWrite(red, LOW);
+  digitalWrite(green, LOW);
+  digitalWrite(blue, LOW);
+
+  updateLCD();
+}
+
+void updateLCD(){
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Score:");
+  lcd.setCursor(7, 0);
+  lcd.print(score);
+}
+
+void addPoints(){
+  updateLCD();
+  lcd.setCursor(0, 1);
+  lcd.print("Total:");
+  lcd.setCursor(7, 1);
+  lcd.print("50");
+
+  for(int i = 1; i < score + 1; i++){
+    lcd.setCursor(7, 0);
+    lcd.print(score - i);
+    lcd.setCursor(7, 1);
+    lcd.print(50 + i);
+    delay(100);
   }
 }
