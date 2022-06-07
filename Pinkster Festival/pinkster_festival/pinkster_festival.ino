@@ -54,7 +54,13 @@ void loop() {
 
   //Write congratulations
   lcd.setCursor(0, 1);
-  lcd.print("Congratulations!");
+  lcd.print("Add points?");
+
+  //Wait for clickthrough
+  while(digitalRead(rButton) == LOW || digitalRead(gButton) == LOW || digitalRead(bButton) == LOW){
+  }
+
+  addPoints();
 
   //Wait for clickthrough
   while(digitalRead(rButton) == LOW || digitalRead(gButton) == LOW || digitalRead(bButton) == LOW){
@@ -119,4 +125,20 @@ void updateLCD(){
   lcd.print("Score:");
   lcd.setCursor(7, 0);
   lcd.print(score);
+}
+
+void addPoints(){
+  updateLCD();
+  lcd.setCursor(0, 1);
+  lcd.print("Total:");
+  lcd.setCursor(7, 1);
+  lcd.print("50");
+
+  for(int i = 1; i < score + 1; i++){
+    lcd.setCursor(7, 0);
+    lcd.print(score - i);
+    lcd.setCursor(7, 1);
+    lcd.print(50 + i);
+    delay(100);
+  }
 }
