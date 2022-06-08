@@ -2,9 +2,9 @@
 
 #include <LiquidCrystal_I2C.h>
 
-const int atkButton = 12;
-const int defButton = 13;
-const int frameTime = 1000;
+const int atkButton = 34;
+const int defButton = 35;
+const int frameTime = 500;
 const int playTime = 30000;
 const int spawnChance = 2;
 int score = 0;
@@ -30,8 +30,6 @@ void setup() {
 
   lcd.init();
   lcd.backlight();
-
-  Serial.begin(115200);
 }
 
 void loop() {
@@ -44,29 +42,26 @@ void loop() {
 
   //Buffer
   delay(2000);
-
-  Serial.println("Waiting for activation");
+  
   //Wait for activation
   while(digitalRead(atkButton) == LOW || digitalRead(defButton) == LOW){
   }
 
-  Serial.println("Activated, now playing");
+  countDown();
+
   //Play game for however long playTime is set to
   timer = millis();
   while(millis() < timer + playTime){
     play();
     delay(frameTime);
-
-    
-    if (digitalRead(atkButton == HIGH)){
-      Serial.println("atkButton is pressed");
-    }
-
-    if (digitalRead(defButton == HIGH)){
-      Serial.println("defButton is pressed");
-    }
   }
 
+  //Ask to add points
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Score:");
+  lcd.setCursor(7, 0);
+  lcd.print(score);
   lcd.setCursor(0, 1);
   lcd.print("Add points?");
 
@@ -84,14 +79,28 @@ void loop() {
   score = 0;
 }
 
+void countDown(){
+  //Countdown
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Starting game");
+  lcd.setCursor(0, 1);
+  lcd.print("in:");
+
+  for (int i = 3; i > 0; i--){
+    lcd.setCursor(4, 1);
+    lcd.print(i);
+    delay(1000);
+  }
+}
+
 void play(){
   //Analyze attack position
   switch (atkPos) {
     case 8:
       //If at line (x = 8), determine whether corresponding button is pressed
-      if (digitalRead(atkButton == HIGH)){
+      if (digitalRead(atkButton) == HIGH){
         score++;
-        Serial.println("Successfully attacked, added 1 point");
       }
 
       //Set attack position to storage value to despawn character from LCD
@@ -105,6 +114,9 @@ void play(){
       break;
     default:
       //If none of the above (meaning attack position is 15, 14, 13, 12, 10 or 9), decrease position
+      if (digitalRead(atkButton) == HIGH){
+        score--;
+      }
       atkPos--;
       break;
   }
@@ -113,12 +125,10 @@ void play(){
   switch (defPos) {
     case 6:
       //If at line (x = 6), determine whether corresponding button is pressed
-      if (digitalRead(defButton == HIGH)){
+      if (digitalRead(defButton) == HIGH){
         score++;
-        Serial.println("Successfully defended, added 1 point");
       } else {
         score--;
-        Serial.println("Unsuccessfully defended, subtracted 1 point");
       }
 
       //Set defend position to storage value to despawn character from LCD
@@ -132,10 +142,18 @@ void play(){
       break;
     default:
       //If none of the above (meaning defend position is 0, 1, 2, 3, 4 or 5), increase position
+      if (digitalRead(defButton) == HIGH){
+        score--;
+      }
       defPos++;
       break;
   }
 
+  //Score can't go into negative
+  if (score < 1){
+    score = 0;
+  }
+  
   //Draw on LCD
   updateLCD();
 }
@@ -161,6 +179,7 @@ void updateLCD(){
 }
 
 void addPoints(){
+  //Write everything on LCD
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("Score:");
@@ -171,6 +190,10 @@ void addPoints(){
   lcd.setCursor(7, 1);
   lcd.print("50");
 
+  //Buffer
+  delay(1000);
+
+  //Subtract from score and add to total
   for(int i = 1; i < score + 1; i++){
     lcd.setCursor(7, 0);
     lcd.print(score - i);
