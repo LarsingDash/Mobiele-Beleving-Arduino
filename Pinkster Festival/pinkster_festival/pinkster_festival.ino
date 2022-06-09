@@ -2,20 +2,30 @@
 
 #include <LiquidCrystal_I2C.h>
 
+//Hardware pins
 const int red = 13;
 const int green = 12;
 const int blue = 14;
 const int rButton = 32;
 const int gButton = 35;
 const int bButton = 34;
+
+//Setup variables
+const int frameTime = 250;
+const int playTime = 15000;
+const int pressWindow = 5000;
+
+//Loop variables
 int score = 0;
 long timer;
 long timer2;
 int rNumber;
 
+//LCD
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 
 void setup() {
+  //Initialize hardware
   pinMode(red, OUTPUT);
   pinMode(green, OUTPUT);
   pinMode(blue, OUTPUT);
@@ -24,14 +34,14 @@ void setup() {
   pinMode(gButton, INPUT_PULLUP);
   pinMode(bButton, INPUT_PULLUP);
 
+  //Initialize LCD
   Wire.begin(25,26);
-
   lcd.init();
   lcd.backlight();
 }
 
 void loop() {
-  //Initialize display
+  //Reset display
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("Scan phone");
@@ -45,17 +55,24 @@ void loop() {
   while(digitalRead(rButton) == LOW || digitalRead(gButton) == LOW || digitalRead(bButton) == LOW){
   }
 
-  //Play game for 15 seconds
+  countDown();
+  updateLCD();
+
+  //Play game for however long playTime is set to
   timer = millis();
-  while(millis() < timer + 15000){
+  while(millis() < timer + playTime){
     play();
-    delay(250);
+    delay(frameTime);
   }
 
-  //Write congratulations
+  //Ask to add points
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Score:");
+  lcd.setCursor(7, 0);
+  lcd.print(score);
   lcd.setCursor(0, 1);
   lcd.print("Add points?");
-
   //Wait for clickthrough
   while(digitalRead(rButton) == LOW || digitalRead(gButton) == LOW || digitalRead(bButton) == LOW){
   }
@@ -68,6 +85,21 @@ void loop() {
 
   //Reset score
   score = 0;
+}
+
+void countDown(){
+  //Countdown
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Starting game");
+  lcd.setCursor(0, 1);
+  lcd.print("in:");
+
+  for (int i = 3; i > 0; i--){
+    lcd.setCursor(4, 1);
+    lcd.print(i);
+    delay(1000);
+  }
 }
 
 void play(){
@@ -87,7 +119,7 @@ void play(){
 
   //Active pause
   timer2 = millis();
-  while(millis() < timer2 + 5000){
+  while(millis() < timer2 + pressWindow){
     //If light is red and red button is pressed
     if (digitalRead(rButton) == HIGH){
       if (rNumber == 0){
@@ -116,11 +148,14 @@ void play(){
   digitalWrite(green, LOW);
   digitalWrite(blue, LOW);
 
+  //Draw on LCD
   updateLCD();
 }
 
 void updateLCD(){
   lcd.clear();
+
+  //Draw game elements
   lcd.setCursor(0, 0);
   lcd.print("Score:");
   lcd.setCursor(7, 0);
@@ -128,12 +163,21 @@ void updateLCD(){
 }
 
 void addPoints(){
-  updateLCD();
+  //Write everything on LCD
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Score:");
+  lcd.setCursor(7, 0);
+  lcd.print(score);
   lcd.setCursor(0, 1);
   lcd.print("Total:");
   lcd.setCursor(7, 1);
   lcd.print("50");
 
+  //Buffer
+  delay(1000);
+
+  //Subtract from score and add to total
   for(int i = 1; i < score + 1; i++){
     lcd.setCursor(7, 0);
     lcd.print(score - i);
