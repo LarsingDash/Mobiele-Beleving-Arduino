@@ -10,16 +10,19 @@ const int button = 34;
 
 //Setup variables
 const int playTime = 30000;
-const int upChance = 50;
+const int upChance = 25;
 
 //Loop variables
 int score = 0;
-boolean servoUp;
+boolean lServoUp;
+boolean rServoUp;
 long timer;
 
 //Initialize afstandssensor
-AfstandsSensor sensor(12, 13);
-Servo servo;
+AfstandsSensor lSensor(12, 13);
+AfstandsSensor rSensor(27, 14);
+Servo lServo;
+Servo rServo;
 
 //LCD
 LiquidCrystal_I2C lcd(0x27, 16, 2);
@@ -29,8 +32,10 @@ void setup() {
   pinMode(button, INPUT_PULLUP);
   
   //Initialize servo
-  servo.attach(32, 500, 2400);
-  servoUp = false;
+  lServo.attach(32, 500, 2400);
+  rServo.attach(33, 500, 2400);
+  lServoUp = false;
+  rServoUp = false;
 
   //Initialize LCD
   Wire.begin(25,26);
@@ -51,17 +56,24 @@ void loop(){
   //Buffer
   delay(2000);
 
+  Serial.println("Waiting for activation");
   while(digitalRead(button) == LOW){
   }
 
   countDown();
   updateLCD();
 
+  Serial.println("Now playing");
   timer = millis();
   while(millis() < timer + playTime){
     play();
     delay(100);
   }
+
+  lServo.write(100);
+  rServo.write(100);
+  lServoUp = false;
+  rServoUp = false;
 
   //Ask to add points
   lcd.clear();
@@ -86,26 +98,43 @@ void loop(){
   score = 0;
 }
 
-void play() {
-  //Randomly activate (1 in 50 every 100 ms = once every 5 seconds)
-  if (sensor.afstandCM() > 10 || sensor.afstandCM() < 1){
-    if (random(0, upChance) == 0) {
-    //Servo up
-    servo.write(0);
-    servoUp = true;
-
-    //Wait for distance to get between 0 and 10, check every 100 ms
-      while(servoUp){
-        if(sensor.afstandCM() > 0 && sensor.afstandCM() < 10){
-        servo.write(100);
-        servoUp = false;
-        score++;
-        }
-        
-      delay(100);
+void play(){
+  if(lServoUp){
+    Serial.println(lSensor.afstandCM());
+    if(lSensor.afstandCM() > 0 && lSensor.afstandCM() < 10){
+      lServo.write(100);
+      lServoUp = false;
+      score++;
+    }
+  }else{
+    if(lSensor.afstandCM() < 0 || lSensor.afstandCM() > 10){
+      if(random(0, upChance) == 0){
+        lServo.write(0);
+        lServoUp = true;
+        Serial.println("Left servo up");
       }
     }
   }
+
+  if(rServoUp){
+    Serial.println(rSensor.afstandCM());
+    if(rSensor.afstandCM() > 0 && rSensor.afstandCM() < 10){
+      rServo.write(100);
+      rServoUp = false;
+      score++;
+    }
+  }else{
+    if(rSensor.afstandCM() < 0 || rSensor.afstandCM() > 10){
+      if(random(0, upChance) == 0){
+        rServo.write(0);
+        rServoUp = true;
+        Serial.println("Right servo up");
+      }
+    }
+  }
+}
+
+  updateLCD();
 }
 
 void countDown(){
@@ -126,6 +155,8 @@ void countDown(){
 void updateLCD(){
   lcd.clear();
 
+  Serial.println(score);
+ 
   //Draw game elements
   lcd.setCursor(0, 0);
   lcd.print("Score:");
