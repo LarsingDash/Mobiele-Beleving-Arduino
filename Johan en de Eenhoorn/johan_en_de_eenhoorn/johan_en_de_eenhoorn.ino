@@ -39,51 +39,26 @@ void setup() {
   lcd.backlight();
 }
 
-void loop() {
-  //Reset display
+void updateLCD(){
   lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("Scan phone");
-  lcd.setCursor(0, 1);
-  lcd.print("to start game");
 
-  //Buffer
-  delay(2000);
-  
-  //Wait for activation
-  while(digitalRead(atkButton) == LOW || digitalRead(defButton) == LOW){
-  }
-
-  countDown();
-
-  //Play game for however long playTime is set to
-  timer = millis();
-  while(millis() < timer + playTime){
-    play();
-    delay(frameTime);
-  }
-
-  //Ask to add points
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("Score:");
+  //Draw game elements
+  lcd.setCursor(6, 0);
+  lcd.write(1);
   lcd.setCursor(7, 0);
+  lcd.write(0);
+  lcd.setCursor(8, 0);
+  lcd.write(1);
+  lcd.setCursor(15, 0);
   lcd.print(score);
-  lcd.setCursor(0, 1);
-  lcd.print("Add points?");
-
-  //Wait for clickthrough
-  while(digitalRead(atkButton) == LOW || digitalRead(defButton) == LOW){
-  }
-
-  addPoints();
-
-  //Wait for clickthrough
-  while(digitalRead(atkButton) == LOW || digitalRead(defButton) == LOW){
-  }
-
-  //Reset score
-  score = 0;
+  lcd.setCursor(7, 1);
+  lcd.write(0);
+  
+  //Draw attack and/or defense on current position
+  lcd.setCursor(defPos, 1);
+  lcd.write(3);
+  lcd.setCursor(atkPos, 1);
+  lcd.write(2);
 }
 
 void countDown(){
@@ -98,6 +73,31 @@ void countDown(){
     lcd.setCursor(4, 1);
     lcd.print(i);
     delay(1000);
+  }
+}
+
+void addPoints(){
+  //Write everything on LCD
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Score:");
+  lcd.setCursor(7, 0);
+  lcd.print(score);
+  lcd.setCursor(0, 1);
+  lcd.print("Total:");
+  lcd.setCursor(7, 1);
+  lcd.print("50");
+
+  //Buffer
+  delay(1000);
+
+  //Subtract from score and add to total
+  for(int i = 1; i < score + 1; i++){
+    lcd.setCursor(7, 0);
+    lcd.print(score - i);
+    lcd.setCursor(7, 1);
+    lcd.print(50 + i);
+    delay(100);
   }
 }
 
@@ -165,49 +165,49 @@ void play(){
   updateLCD();
 }
 
-void updateLCD(){
+void loop() {
+  //Reset display
   lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Scan phone");
+  lcd.setCursor(0, 1);
+  lcd.print("to start game");
 
-  //Draw game elements
-  lcd.setCursor(6, 0);
-  lcd.write(1);
-  lcd.setCursor(7, 0);
-  lcd.write(0);
-  lcd.setCursor(8, 0);
-  lcd.write(1);
-  lcd.setCursor(15, 0);
-  lcd.print(score);
-  lcd.setCursor(7, 1);
-  lcd.write(0);
+  //Buffer
+  delay(2000);
   
-  //Draw attack and/or defense on current position
-  lcd.setCursor(defPos, 1);
-  lcd.write(3);
-  lcd.setCursor(atkPos, 1);
-  lcd.write(2);
-}
+  //Wait for activation
+  while(digitalRead(atkButton) == LOW || digitalRead(defButton) == LOW){
+  }
 
-void addPoints(){
-  //Write everything on LCD
+  countDown();
+
+  //Play game for however long playTime is set to
+  timer = millis();
+  while(millis() < timer + playTime){
+    play();
+    delay(frameTime);
+  }
+
+  //Ask to add points
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("Score:");
   lcd.setCursor(7, 0);
   lcd.print(score);
   lcd.setCursor(0, 1);
-  lcd.print("Total:");
-  lcd.setCursor(7, 1);
-  lcd.print("50");
+  lcd.print("Add points?");
 
-  //Buffer
-  delay(1000);
-
-  //Subtract from score and add to total
-  for(int i = 1; i < score + 1; i++){
-    lcd.setCursor(7, 0);
-    lcd.print(score - i);
-    lcd.setCursor(7, 1);
-    lcd.print(50 + i);
-    delay(100);
+  //Wait for clickthrough
+  while(digitalRead(atkButton) == LOW || digitalRead(defButton) == LOW){
   }
+
+  addPoints();
+
+  //Wait for clickthrough
+  while(digitalRead(atkButton) == LOW || digitalRead(defButton) == LOW){
+  }
+
+  //Reset score
+  score = 0;
 }

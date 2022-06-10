@@ -45,6 +45,96 @@ void setup() {
   Serial.begin(115200);
 }
 
+void updateLCD(){
+  lcd.clear();
+
+  Serial.println(score);
+ 
+  //Draw game elements
+  lcd.setCursor(0, 0);
+  lcd.print("Score:");
+  lcd.setCursor(7, 0);
+  lcd.print(score);
+}
+
+void countDown(){
+  //Countdown
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Starting game");
+  lcd.setCursor(0, 1);
+  lcd.print("in:");
+
+  for (int i = 3; i > 0; i--){
+    lcd.setCursor(4, 1);
+    lcd.print(i);
+    delay(1000);
+  }
+} 
+
+void addPoints(){
+  //Write everything on LCD
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Score:");
+  lcd.setCursor(7, 0);
+  lcd.print(score);
+  lcd.setCursor(0, 1);
+  lcd.print("Total:");
+  lcd.setCursor(7, 1);
+  lcd.print("50");
+
+  //Buffer
+  delay(1000);
+
+  //Subtract from score and add to total
+  for(int i = 1; i < score + 1; i++){
+    lcd.setCursor(7, 0);
+    lcd.print(score - i);
+    lcd.setCursor(7, 1);
+    lcd.print(50 + i);
+    delay(100);
+  }
+}
+
+void play(){
+  if(lServoUp){
+    Serial.println(lSensor.afstandCM());
+    if(lSensor.afstandCM() > 0 && lSensor.afstandCM() < 10){
+      lServo.write(100);
+      lServoUp = false;
+      score++;
+    }
+  }else{
+    if(lSensor.afstandCM() < 0 || lSensor.afstandCM() > 10){
+      if(random(0, upChance) == 0){
+        lServo.write(0);
+        lServoUp = true;
+        Serial.println("Left servo up");
+      }
+    }
+  }
+
+  if(rServoUp){
+    Serial.println(rSensor.afstandCM());
+    if(rSensor.afstandCM() > 0 && rSensor.afstandCM() < 10){
+      rServo.write(100);
+      rServoUp = false;
+      score++;
+    }
+  }else{
+    if(rSensor.afstandCM() < 0 || rSensor.afstandCM() > 10){
+      if(random(0, upChance) == 0){
+        rServo.write(0);
+        rServoUp = true;
+        Serial.println("Right servo up");
+      }
+    }
+  }
+
+  updateLCD();
+}
+
 void loop(){
   //Reset display
   lcd.clear();
@@ -96,95 +186,4 @@ void loop(){
 
   //Reset score;
   score = 0;
-}
-
-void play(){
-  if(lServoUp){
-    Serial.println(lSensor.afstandCM());
-    if(lSensor.afstandCM() > 0 && lSensor.afstandCM() < 10){
-      lServo.write(100);
-      lServoUp = false;
-      score++;
-    }
-  }else{
-    if(lSensor.afstandCM() < 0 || lSensor.afstandCM() > 10){
-      if(random(0, upChance) == 0){
-        lServo.write(0);
-        lServoUp = true;
-        Serial.println("Left servo up");
-      }
-    }
-  }
-
-  if(rServoUp){
-    Serial.println(rSensor.afstandCM());
-    if(rSensor.afstandCM() > 0 && rSensor.afstandCM() < 10){
-      rServo.write(100);
-      rServoUp = false;
-      score++;
-    }
-  }else{
-    if(rSensor.afstandCM() < 0 || rSensor.afstandCM() > 10){
-      if(random(0, upChance) == 0){
-        rServo.write(0);
-        rServoUp = true;
-        Serial.println("Right servo up");
-      }
-    }
-  }
-}
-
-  updateLCD();
-}
-
-void countDown(){
-  //Countdown
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("Starting game");
-  lcd.setCursor(0, 1);
-  lcd.print("in:");
-
-  for (int i = 3; i > 0; i--){
-    lcd.setCursor(4, 1);
-    lcd.print(i);
-    delay(1000);
-  }
-}
-
-void updateLCD(){
-  lcd.clear();
-
-  Serial.println(score);
- 
-  //Draw game elements
-  lcd.setCursor(0, 0);
-  lcd.print("Score:");
-  lcd.setCursor(7, 0);
-  lcd.print(score);
-}
-
-void addPoints(){
-  //Write everything on LCD
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("Score:");
-  lcd.setCursor(7, 0);
-  lcd.print(score);
-  lcd.setCursor(0, 1);
-  lcd.print("Total:");
-  lcd.setCursor(7, 1);
-  lcd.print("50");
-
-  //Buffer
-  delay(1000);
-
-  //Subtract from score and add to total
-  for(int i = 1; i < score + 1; i++){
-    lcd.setCursor(7, 0);
-    lcd.print(score - i);
-    lcd.setCursor(7, 1);
-    lcd.print(50 + i);
-    delay(100);
-  }
 }
