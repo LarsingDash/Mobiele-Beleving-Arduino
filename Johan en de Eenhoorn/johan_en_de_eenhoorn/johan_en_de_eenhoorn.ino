@@ -1,6 +1,8 @@
 #include <Wire.h>
-
 #include <LiquidCrystal_I2C.h>
+
+#include <WiFi.h>
+#include <PubSubClient.h>
 
 //Hardware pins
 const int atkButton = 34;
@@ -17,6 +19,30 @@ int defPos = random(0, 5);
 int score = 0;
 long timer;
 
+//Wifi
+const char* WLAN_ssid = "MQTT Test Network";
+const char* WLAN_access_key = "00177013";
+
+//Client IP
+const char* MQTT_client_id = "arduino_johan_en_de_eenhoorn";
+
+//MQTT broker
+const char* MQTT_broker_url = "broker.hivemq.com";
+const int   MQTT_port       = 1883;
+const char* MQTT_username   = "";
+const char* MQTT_password   = "";
+
+//MQTT topics
+const char* MQTT_topic_games_isAvailable = "esstelstrijd/games/jede/isAvailable";
+const char* MQTT_topic_games_currentUser = "esstelstrijd/games/jede/currentUser";
+
+//MQTT quality of service
+const int MQTT_qos = 0;
+
+//Create Wifi and MQTT variables
+WiFiClient wifi;
+PubSubClient mqtt(wifi);
+
 //LCD
 LiquidCrystal_I2C lcd(0x27, 16, 2);
 byte line[] = {B00100,B00100,B00100,B00100,B00100,B00100,B00100,B00100};
@@ -24,10 +50,26 @@ byte arrow[] = {B00100,B00100,B00100,B00100,B10101,B11111,B01110,B00100};
 byte attack[] = {B00100,B00100,B00100,B00100,B00100,B00100,B01110,B00100};
 byte defend[] = {B00000,B11111,B11111,B11111,B11111,B01110,B00100,B00000};
 
+//Setup callback
+void mqttCallback(char* topic, byte* payload, unsigned int length){
+  //Logging
+  Serial.println("--------------------------------");
+  Serial.println("MQTT callback called for topic: ");
+  Serial.println(topic);
+  Serial.println("Message: ");
+  for (int i = 0; i < length; i++){
+    Serial.print((char)payload[i]);
+  }
+  Serial.println();
+}
+
 void setup() {
   //Initialize hardware
   pinMode(atkButton, INPUT_PULLUP);
   pinMode(defButton, INPUT_PULLUP);
+
+  Serial.begin(115200);
+  Serial.println("Test start");
 
   //Initialize LCD
   Wire.begin(25,26);
@@ -37,53 +79,73 @@ void setup() {
   lcd.createChar(2, attack);
   lcd.createChar(3, defend);
   lcd.backlight();
+
+  //WiFi
+  WiFi.mode(WIFI_STA);
+  WiFi.disconnect();
+  Serial.println("Connecting to ");
+  Serial.println(WLAN_ssid);
+  WiFi.begin(WLAN_ssid, WLAN_access_key);
+  
+  while(WiFi.status() != WL_CONNECTED){
+    Serial.print(".");
+    delay(1000);
+  }
+
+  Serial.println("WiFi connected");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+
+  //MQTT
+  //Setup client
+  mqtt.setServer(MQTT_broker_url, MQTT_port);
+  mqtt.setCallback(mqttCallback);
+  
+  //Connect to broker
+  if(mqtt.connect(MQTT_client_id, MQTT_username, MQTT_password)){
+    Serial.println("Connected to MQTT broker");
+  }else{
+    Serial.println("Failed to connect to MQTT broker");
+  }
+
+  //Subscribe to topic
+  if(mqtt.subscribe(MQTT_topic_games_isAvailable, MQTT_qos)){
+    Serial.println("Subscribed to ");
+    Serial.println(MQTT_topic_games_isAvailable);
+  }else{
+    Serial.println("Failed to subscribe to ");
+    Serial.println(MQTT_topic_games_isAvailable);
+  }
+
+  if(mqtt.subscribe(MQTT_topic_games_currentUser, MQTT_qos)){
+    Serial.println("Subscribed to ");
+    Serial.println(MQTT_topic_games_currentUser);
+  }else{
+    Serial.println("Failed to subscribe to ");
+    Serial.println(MQTT_topic_games_currentUser);
+  }
 }
 
-void loop() {
-  //Reset display
+void updateLCD(){
   lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("Scan phone");
-  lcd.setCursor(0, 1);
-  lcd.print("to start game");
 
-  //Buffer
-  delay(2000);
-  
-  //Wait for activation
-  while(digitalRead(atkButton) == LOW || digitalRead(defButton) == LOW){
-  }
-
-  countDown();
-
-  //Play game for however long playTime is set to
-  timer = millis();
-  while(millis() < timer + playTime){
-    play();
-    delay(frameTime);
-  }
-
-  //Ask to add points
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("Score:");
+  //Draw game elements
+  lcd.setCursor(6, 0);
+  lcd.write(1);
   lcd.setCursor(7, 0);
+  lcd.write(0);
+  lcd.setCursor(8, 0);
+  lcd.write(1);
+  lcd.setCursor(15, 0);
   lcd.print(score);
-  lcd.setCursor(0, 1);
-  lcd.print("Add points?");
-
-  //Wait for clickthrough
-  while(digitalRead(atkButton) == LOW || digitalRead(defButton) == LOW){
-  }
-
-  addPoints();
-
-  //Wait for clickthrough
-  while(digitalRead(atkButton) == LOW || digitalRead(defButton) == LOW){
-  }
-
-  //Reset score
-  score = 0;
+  lcd.setCursor(7, 1);
+  lcd.write(0);
+  
+  //Draw attack and/or defense on current position
+  lcd.setCursor(defPos, 1);
+  lcd.write(3);
+  lcd.setCursor(atkPos, 1);
+  lcd.write(2);
 }
 
 void countDown(){
@@ -98,6 +160,31 @@ void countDown(){
     lcd.setCursor(4, 1);
     lcd.print(i);
     delay(1000);
+  }
+}
+
+void addPoints(){
+  //Write everything on LCD
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Score:");
+  lcd.setCursor(7, 0);
+  lcd.print(score);
+  lcd.setCursor(0, 1);
+  lcd.print("Total:");
+  lcd.setCursor(7, 1);
+  lcd.print("50");
+
+  //Buffer
+  delay(1000);
+
+  //Subtract from score and add to total
+  for(int i = 1; i < score + 1; i++){
+    lcd.setCursor(7, 0);
+    lcd.print(score - i);
+    lcd.setCursor(7, 1);
+    lcd.print(50 + i);
+    delay(100);
   }
 }
 
@@ -165,49 +252,50 @@ void play(){
   updateLCD();
 }
 
-void updateLCD(){
+void loop() {
+  //Reset display
   lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Scan phone");
+  lcd.setCursor(0, 1);
+  lcd.print("to start game");
 
-  //Draw game elements
-  lcd.setCursor(6, 0);
-  lcd.write(1);
-  lcd.setCursor(7, 0);
-  lcd.write(0);
-  lcd.setCursor(8, 0);
-  lcd.write(1);
-  lcd.setCursor(15, 0);
-  lcd.print(score);
-  lcd.setCursor(7, 1);
-  lcd.write(0);
+  //Buffer
+  delay(2000);
   
-  //Draw attack and/or defense on current position
-  lcd.setCursor(defPos, 1);
-  lcd.write(3);
-  lcd.setCursor(atkPos, 1);
-  lcd.write(2);
-}
+  //Wait for activation
+  while(digitalRead(atkButton) == LOW || digitalRead(defButton) == LOW){
+    mqtt.loop();
+  }
 
-void addPoints(){
-  //Write everything on LCD
+  countDown();
+
+  //Play game for however long playTime is set to
+  timer = millis();
+  while(millis() < timer + playTime){
+    play();
+    delay(frameTime);
+  }
+
+  //Ask to add points
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("Score:");
   lcd.setCursor(7, 0);
   lcd.print(score);
   lcd.setCursor(0, 1);
-  lcd.print("Total:");
-  lcd.setCursor(7, 1);
-  lcd.print("50");
+  lcd.print("Add points?");
 
-  //Buffer
-  delay(1000);
-
-  //Subtract from score and add to total
-  for(int i = 1; i < score + 1; i++){
-    lcd.setCursor(7, 0);
-    lcd.print(score - i);
-    lcd.setCursor(7, 1);
-    lcd.print(50 + i);
-    delay(100);
+  //Wait for clickthrough
+  while(digitalRead(atkButton) == LOW || digitalRead(defButton) == LOW){
   }
+
+  addPoints();
+
+  //Wait for clickthrough
+  while(digitalRead(atkButton) == LOW || digitalRead(defButton) == LOW){
+  }
+
+  //Reset score
+  score = 0;
 }
