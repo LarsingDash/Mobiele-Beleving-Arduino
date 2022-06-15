@@ -228,8 +228,6 @@ void play(){
 }
 
 void loop() {
-  
-  
   //Reset display
   lcd.clear();
   lcd.setCursor(0, 0);
