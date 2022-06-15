@@ -12,7 +12,7 @@ bool buttonPressedPrev = false;
 const char* WLAN_ssid = "MQTT Test Network";
 const char* WLAN_access_key = "00177013";
 
-//Client IP
+//Client ID
 const char* MQTT_client_id = "TestArduino";
 
 //MQTT broker
@@ -31,25 +31,20 @@ const int MQTT_qos = 0;
 WiFiClient wifi;
 PubSubClient mqtt(wifi);
 
-//Activates on callback
-void ledCallback(){
-  //Logging
-  Serial.println("Callback received");
-  
-  digitalWrite(led, HIGH);
-}
 
 //Setup callback
 void mqttCallback(char* topic, byte* payload, unsigned int length){
   //Logging
-  Serial.print("MQTT callback called for topic: ");
+  Serial.println("MQTT callback called for topic: ");
   Serial.println(topic);
-  Serial.print("Payload length: ");
-  Serial.println(length);
+  Serial.println("Message: ");
+  for (int i = 0; i < length; i++){
+    Serial.println((char)payload[i]);
+  }
 
   //Check if changed topic is the one we want to listen to
   if(strcmp(topic, MQTT_topic_test) == 0){
-    ledCallback();
+    Serial.println("Message received on esstelstrijd/test");
   }
 }
 
@@ -64,17 +59,17 @@ void setup() {
   WiFi.mode(WIFI_STA);
   WiFi.disconnect();
   Serial.println("Connecting to ");
-  Serial.print(WLAN_ssid);
+  Serial.println(WLAN_ssid);
   WiFi.begin(WLAN_ssid, WLAN_access_key);
   
   while(WiFi.status() != WL_CONNECTED){
     Serial.print(".");
-    delay(1000);
+    delay(500);
   }
 
   Serial.println("WiFi connected");
   Serial.println("IP address: ");
-  Serial.print(WiFi.localIP());
+  Serial.println(WiFi.localIP());
 
   //MQTT
   //Setup client
@@ -91,23 +86,15 @@ void setup() {
   //Subscribe to topic
   if(mqtt.subscribe(MQTT_topic_test, MQTT_qos)){
     Serial.println("Subscribed to ");
-    Serial.print(MQTT_topic_test);
+    Serial.println(MQTT_topic_test);
   }else{
     Serial.println("Failed to subscribe to ");
-    Serial.print(MQTT_topic_test);
+    Serial.println(MQTT_topic_test);
   }
+
+  mqtt.publish(MQTT_topic_test, "Hi there!");
 }
 
 void loop() {
   mqtt.loop();
-
-  //If button pressed, write "Pressed" to topic
-  bool buttonPressedNow = !digitalRead(button);
-  
-  if(buttonPressedNow && !buttonPressedPrev){
-      Serial.println("Button pressed");
-      mqtt.publish(MQTT_topic_test, "Pressed");
-  }
-  
-  buttonPressedPrev = buttonPressedNow;
 }
