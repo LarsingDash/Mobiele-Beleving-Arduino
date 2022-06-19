@@ -40,14 +40,11 @@ void mqttCallback(char* topic, byte* payload, unsigned int length){
   Serial.println("-------------------------------");
   Serial.print("MQTT callback called for topic: ");
   Serial.println(topic);
-  Serial.print("Message as string: ");
-  
+
   char messageBuffer[30]; //Buffer to hold string
   memcpy(messageBuffer, payload, length); //Copy payload to buffer
   messageBuffer[length] = '\0'; // Terminate array to transform buffer into string
   String message = messageBuffer; // Write to permanent variable
-  
-  Serial.println(message);
 
   //Action
   if(!strcmp(topic, (char*)games_fest_isAvailable.c_str())){ // Topic filter
@@ -192,5 +189,8 @@ void loop() {
   Serial.println(userLand);
   mqtt.loop();
 
-  mqtt.publish((char*)games_fest_isAvailable.c_str(), "yes");
+  String newAvailability = "yes";
+  byte availabilityBuffer[newAvailability.length() + 1];
+  newAvailability.getBytes(availabilityBuffer, newAvailability.length() + 1);
+  mqtt.publish((char*)games_fest_isAvailable.c_str(), availabilityBuffer, newAvailability.length(), true);
 }
