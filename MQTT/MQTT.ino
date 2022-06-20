@@ -10,7 +10,7 @@ int userPoints;
 String userLand;
 
 //Wifi
-const char* ssid = "MQTT Test Network";
+const char* ssid = "MQTT Network";
 const char* access_key = "00177013";
 
 //Client ID
@@ -34,8 +34,8 @@ const String users_user_land_END      = "/land";
 WiFiClient wifi;
 PubSubClient mqtt(wifi);
 
-//Setup callback
-void mqttCallback(char* topic, byte* payload, unsigned int length){
+//Callback
+void callback(char* topic, byte* payload, unsigned int length){
   //Logging
   Serial.println("-------------------------------");
   Serial.print("MQTT callback called for topic: ");
@@ -85,19 +85,8 @@ void mqttCallback(char* topic, byte* payload, unsigned int length){
     Serial.print("Received land points: ");
     Serial.println(landPoints);
 
-    String newUserPoints = String(userPoints + 50);
-    byte userPointsBuffer[newUserPoints.length() + 1];
-    newUserPoints.getBytes(userPointsBuffer, newUserPoints.length() + 1);
-    mqtt.publish((char*)(users_user + points_END).c_str(), userPointsBuffer, newUserPoints.length(), true);
-    Serial.print("Published new points to user: ");
-    Serial.println(newUserPoints);
-
-    String newLandPoints = String(landPoints + 50);
-    byte landPointsBuffer[newLandPoints.length() + 1];
-    newLandPoints.getBytes(landPointsBuffer, newLandPoints.length() + 1);
-    mqtt.publish((char*)(lands_land + userLand + points_END).c_str(), landPointsBuffer, newLandPoints.length(), true);
-    Serial.print("Published new points to land: ");
-    Serial.println(newLandPoints);
+    publishRetain((users_user + points_END), String(userPoints + 50));
+    publishRetain((lands_land + userLand + points_END), String(landPoints + 50));
   }
 }
 
@@ -114,7 +103,7 @@ void setup() {
   
   while(WiFi.status() != WL_CONNECTED){
     Serial.print(".");
-    delay(500);
+    delay(250);
   }
   Serial.println();
 
@@ -125,7 +114,7 @@ void setup() {
   //MQTT
   //Setup client
   mqtt.setServer(broker_url, port);
-  mqtt.setCallback(mqttCallback);
+  mqtt.setCallback(callback);
 
   //Connect to broker
   if(mqtt.connect(client_id, username, password)){
@@ -156,6 +145,16 @@ void defaultStates(){
   Serial.println("Reset everything");
 }
 
+void publishRetain(String topic, String message){
+  byte Buffer[message.length() + 1];
+  message.getBytes(Buffer, message.length() + 1);
+  mqtt.publish((char*)topic.c_str(), Buffer, message.length(), true);
+  Serial.print("Published message ");
+  Serial.print(message);
+  Serial.print(" to ");
+  Serial.println(topic);
+}
+
 void loop() {
   int timer2 = millis();
   while(millis() < timer2 + 1000){
@@ -175,7 +174,7 @@ void loop() {
   mqtt.loop();
 
   Serial.println("Playing game...");
-  int timer = millis();
+  long timer = millis();
   while(millis() < timer + 10000){
     mqtt.loop();
   }
@@ -189,8 +188,6 @@ void loop() {
   Serial.println(userLand);
   mqtt.loop();
 
-  String newAvailability = "yes";
-  byte availabilityBuffer[newAvailability.length() + 1];
-  newAvailability.getBytes(availabilityBuffer, newAvailability.length() + 1);
-  mqtt.publish((char*)games_fest_isAvailable.c_str(), availabilityBuffer, newAvailability.length(), true);
+  publishRetain(games_fest_isAvailable, "yes");
+  publishRetain(games_fest_currentUser, "default");
 }
