@@ -120,7 +120,7 @@ void setup() {
   pinMode(defButton, INPUT_PULLUP);
 
   Serial.begin(115200);
-  Serial.println("Test start");
+  Serial.println("Start");
 
   //Initialize LCD
   Wire.begin(25,26);
@@ -231,6 +231,7 @@ void countDown(){
     lcd.setCursor(4, 1);
     lcd.print(i);
     delay(1000);
+    mqtt.loop();
   }
 }
 
@@ -371,7 +372,7 @@ void loop() {
   mqtt.loop();
 
   publishRetain(games_jede_isAvailable, "yes");
-//  publishRetain(games_jede_currentUser, "default");
+  publishRetain(games_jede_currentUser, "default");
 
   addPoints();
 }

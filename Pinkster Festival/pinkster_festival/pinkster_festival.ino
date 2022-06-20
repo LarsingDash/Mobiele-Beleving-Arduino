@@ -125,7 +125,7 @@ void setup() {
   pinMode(bButton, INPUT_PULLUP);
 
   Serial.begin(115200);
-  Serial.println("Test start");
+  Serial.println("Start");
 
   //Initialize LCD
   Wire.begin(25,26);
@@ -215,6 +215,7 @@ void countDown(){
     lcd.setCursor(4, 1);
     lcd.print(i);
     delay(1000);
+    mqtt.loop();
   }
 }
 
@@ -304,7 +305,7 @@ void play(){
 
 void loop() {
   long bufferTimer = millis();
-  while(millis() < bufferTimer + 1000){
+  while(millis() < bufferTimer + 2500){
     mqtt.loop();
   }
   
@@ -350,7 +351,7 @@ void loop() {
   mqtt.loop();
 
   publishRetain(games_fest_isAvailable, "yes");
-//  publishRetain(games_fest_currentUser, "default");
+  publishRetain(games_fest_currentUser, "default");
 
   addPoints();
 }
