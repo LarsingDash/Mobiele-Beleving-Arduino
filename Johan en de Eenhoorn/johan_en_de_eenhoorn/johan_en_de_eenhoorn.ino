@@ -17,27 +17,33 @@ const int spawnChance = 2;
 int atkPos = random(11, 16);
 int defPos = random(0, 5);
 int score = 0;
-long timer;
+long playTimer;
+
+bool isAvailable;
+int landPoints;
+int userPoints;
+String userLand;
 
 //Wifi
-const char* WLAN_ssid = "MQTT Test Network";
-const char* WLAN_access_key = "00177013";
+const char* ssid = "MQTT Network";
+const char* access_key = "00177013";
 
 //Client IP
-const char* MQTT_client_id = "arduino_johan_en_de_eenhoorn";
+const char* client_id = "arduino_johan_en_de_eenhoorn";
 
 //MQTT broker
-const char* MQTT_broker_url = "broker.hivemq.com";
-const int   MQTT_port       = 1883;
-const char* MQTT_username   = "";
-const char* MQTT_password   = "";
+const char* broker_url = "broker.hivemq.com";
+const int   port       = 1883;
+const char* username   = "";
+const char* password   = "";
 
 //MQTT topics
-const char* MQTT_topic_games_isAvailable = "esstelstrijd/games/jede/isAvailable";
-const char* MQTT_topic_games_currentUser = "esstelstrijd/games/jede/currentUser";
-
-//MQTT quality of service
-const int MQTT_qos = 0;
+const String games_jede_isAvailable   = "esstelstrijd/games/jede/isAvailable";
+const String games_jede_currentUser   = "esstelstrijd/games/jede/currentUser";
+String users_user                     = "esstelstrijd/users/";
+String lands_land                     = "esstelstrijd/lands/";
+const String points_END               = "/points";
+const String users_user_land_END      = "/land";
 
 //Create Wifi and MQTT variables
 WiFiClient wifi;
@@ -50,17 +56,62 @@ byte arrow[] = {B00100,B00100,B00100,B00100,B10101,B11111,B01110,B00100};
 byte attack[] = {B00100,B00100,B00100,B00100,B00100,B00100,B01110,B00100};
 byte defend[] = {B00000,B11111,B11111,B11111,B11111,B01110,B00100,B00000};
 
-//Setup callback
-void mqttCallback(char* topic, byte* payload, unsigned int length){
+//Callback
+void callback(char* topic, byte* payload, unsigned int length){
   //Logging
-  Serial.println("--------------------------------");
-  Serial.println("MQTT callback called for topic: ");
+  Serial.println("-------------------------------");
+  Serial.print("MQTT callback called for topic: ");
   Serial.println(topic);
-  Serial.println("Message: ");
-  for (int i = 0; i < length; i++){
-    Serial.print((char)payload[i]);
+
+  char messageBuffer[30]; //Buffer to hold string
+  memcpy(messageBuffer, payload, length); //Copy payload to buffer
+  messageBuffer[length] = '\0'; // Terminate array to transform buffer into string
+  String message = messageBuffer; // Write to permanent variable
+
+  //Action
+  if(!strcmp(topic, (char*)games_jede_isAvailable.c_str())){ // Topic filter
+    if(message.equals("no") && isAvailable != false){ // Message filter
+      isAvailable = false; // Action
+      Serial.println("Set isAvailable_local to false");
+    }else if(message.equals("yes") && isAvailable != true){
+      isAvailable = true;
+      Serial.println("Set isAvailable_local to true");
+    }
+  }else if(!strcmp(topic, (char*)games_jede_currentUser.c_str())){
+    users_user = users_user + message;
+    Serial.print("Received a user: ");
+    Serial.println(users_user);
+
+    mqtt.subscribe((char*)(users_user + points_END).c_str());
+    Serial.println("Subscribed to user points");
+    mqtt.unsubscribe((char*)(users_user + points_END).c_str());
+    Serial.println("Unsubscribed to user points");
+    mqtt.loop();
+
+    mqtt.subscribe((char*)(users_user + users_user_land_END).c_str());
+    Serial.println("Subscribed to user land");
+    mqtt.unsubscribe((char*)(users_user + users_user_land_END).c_str());
+    Serial.println("Unsubscribed to user land");
+    mqtt.loop();
+    
+  } else if(!strcmp(topic, (char*)(users_user + points_END).c_str())){
+    userPoints = message.toInt();
+    Serial.print("Received user points: ");
+    Serial.println(userPoints);
+  } else if(!strcmp(topic, (char*)(users_user + users_user_land_END).c_str())){
+    userLand = message;
+    Serial.print("Received user land: ");
+    Serial.println(userLand);
+  } else if(!strcmp(topic, (char*)(lands_land + userLand + points_END).c_str())){
+    landPoints = message.toInt();
+    Serial.print("Received land points: ");
+    Serial.println(landPoints);
+    Serial.print("User score: ");
+    Serial.println(score);
+
+    publishRetain((users_user + points_END), String(userPoints + score));
+    publishRetain((lands_land + userLand + points_END), String(landPoints + score));
   }
-  Serial.println();
 }
 
 void setup() {
@@ -83,47 +134,62 @@ void setup() {
   //WiFi
   WiFi.mode(WIFI_STA);
   WiFi.disconnect();
-  Serial.println("Connecting to ");
-  Serial.println(WLAN_ssid);
-  WiFi.begin(WLAN_ssid, WLAN_access_key);
+  Serial.print("Connecting to ");
+  Serial.print(ssid);
+  WiFi.begin(ssid, access_key);
   
   while(WiFi.status() != WL_CONNECTED){
     Serial.print(".");
-    delay(1000);
+    delay(250);
   }
 
   Serial.println("WiFi connected");
-  Serial.println("IP address: ");
+  Serial.print("IP address: ");
   Serial.println(WiFi.localIP());
 
   //MQTT
   //Setup client
-  mqtt.setServer(MQTT_broker_url, MQTT_port);
-  mqtt.setCallback(mqttCallback);
+  mqtt.setServer(broker_url, port);
+  mqtt.setCallback(callback);
   
   //Connect to broker
-  if(mqtt.connect(MQTT_client_id, MQTT_username, MQTT_password)){
+  if(mqtt.connect(client_id, username, password)){
     Serial.println("Connected to MQTT broker");
   }else{
     Serial.println("Failed to connect to MQTT broker");
   }
 
-  //Subscribe to topic
-  if(mqtt.subscribe(MQTT_topic_games_isAvailable, MQTT_qos)){
-    Serial.println("Subscribed to ");
-    Serial.println(MQTT_topic_games_isAvailable);
+  //Subscribe to isAvailable topic
+  if(mqtt.subscribe((char*)games_jede_isAvailable.c_str())){
+    Serial.print("Subscribed to ");
+    Serial.println((char*)games_jede_isAvailable.c_str());
   }else{
-    Serial.println("Failed to subscribe to ");
-    Serial.println(MQTT_topic_games_isAvailable);
+    Serial.print("Failed to subscribe to ");
+    Serial.println((char*)games_jede_isAvailable.c_str());
   }
 
-  if(mqtt.subscribe(MQTT_topic_games_currentUser, MQTT_qos)){
-    Serial.println("Subscribed to ");
-    Serial.println(MQTT_topic_games_currentUser);
-  }else{
-    Serial.println("Failed to subscribe to ");
-    Serial.println(MQTT_topic_games_currentUser);
-  }
+  defaultStates();
+  delay(2500);
+}
+
+void defaultStates(){
+  score = 0;
+  userPoints = 0;
+  userLand = "";
+  landPoints = 0;
+  users_user = "esstelstrijd/users/";
+  lands_land = "esstelstrijd/lands/";
+  Serial.println("Reset everything");
+}
+
+void publishRetain(String topic, String message){
+  byte Buffer[message.length() + 1];
+  message.getBytes(Buffer, message.length() + 1);
+  mqtt.publish((char*)topic.c_str(), Buffer, message.length(), true);
+  Serial.print("Published message ");
+  Serial.print(message);
+  Serial.print(" to ");
+  Serial.println(topic);
 }
 
 void updateLCD(){
@@ -136,10 +202,15 @@ void updateLCD(){
   lcd.write(0);
   lcd.setCursor(8, 0);
   lcd.write(1);
-  lcd.setCursor(15, 0);
-  lcd.print(score);
   lcd.setCursor(7, 1);
   lcd.write(0);
+  if(score > 9){
+    lcd.setCursor(14, 0);
+  }else{
+    lcd.setCursor(15, 0);
+  }
+  lcd.print(score);
+  
   
   //Draw attack and/or defense on current position
   lcd.setCursor(defPos, 1);
@@ -185,6 +256,7 @@ void addPoints(){
     lcd.setCursor(7, 1);
     lcd.print(50 + i);
     delay(100);
+    mqtt.loop();
   }
 }
 
@@ -253,49 +325,53 @@ void play(){
 }
 
 void loop() {
+  long bufferTimer = millis();
+  while(millis() < bufferTimer + 2500){
+    mqtt.loop();
+  }
+  
   //Reset display
   lcd.clear();
   lcd.setCursor(0, 0);
   lcd.print("Scan phone");
   lcd.setCursor(0, 1);
   lcd.print("to start game");
-
-  //Buffer
-  delay(2000);
   
   //Wait for activation
-  while(digitalRead(atkButton) == LOW || digitalRead(defButton) == LOW){
+  while(isAvailable){
     mqtt.loop();
   }
 
+  defaultStates();
+  mqtt.subscribe((char*)games_jede_currentUser.c_str());
+  Serial.println("Subscribed to currentUser");
+  mqtt.loop();
+  mqtt.unsubscribe((char*)games_jede_currentUser.c_str());
+  Serial.println("Unsubscribed to currentUser");
+  mqtt.loop();
+  
   countDown();
 
+  Serial.println("Playing game...");
   //Play game for however long playTime is set to
-  timer = millis();
-  while(millis() < timer + playTime){
+  playTimer = millis();
+  while(millis() < playTimer + playTime){
     play();
     delay(frameTime);
+    mqtt.loop();
   }
+  Serial.println("Game finished");
 
-  //Ask to add points
-  lcd.clear();
-  lcd.setCursor(0, 0);
-  lcd.print("Score:");
-  lcd.setCursor(7, 0);
-  lcd.print(score);
-  lcd.setCursor(0, 1);
-  lcd.print("Add points?");
+  mqtt.subscribe((char*)(lands_land + userLand + points_END).c_str());
+  Serial.print("Subscribed to land: ");
+  Serial.println(userLand);
+  mqtt.unsubscribe((char*)(lands_land + userLand + points_END).c_str());
+  Serial.print("Unsubscribed to land: ");
+  Serial.println(userLand);
+  mqtt.loop();
 
-  //Wait for clickthrough
-  while(digitalRead(atkButton) == LOW || digitalRead(defButton) == LOW){
-  }
+  publishRetain(games_jede_isAvailable, "yes");
+//  publishRetain(games_jede_currentUser, "default");
 
   addPoints();
-
-  //Wait for clickthrough
-  while(digitalRead(atkButton) == LOW || digitalRead(defButton) == LOW){
-  }
-
-  //Reset score
-  score = 0;
 }
