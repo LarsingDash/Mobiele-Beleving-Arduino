@@ -195,8 +195,6 @@ void publishRetain(String topic, String message){
 
 void updateLCD(){
   lcd.clear();
-
-  Serial.println(score);
  
   //Draw game elements
   lcd.setCursor(0, 0);
@@ -277,10 +275,10 @@ void play(){
       }
     }
   }
-}
 
   updateLCD();
 }
+
 
 void loop(){
   long bufferTimer = millis();
